@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="page-shell">
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">运行记录</p>
+        <h1>{{ monitor.name }}</h1>
+      </div>
+      <a class="button-link secondary" href="/monitors/{{ monitor.id }}">返回详情</a>
+    </div>
+
+    <div class="two-column">
+      <section class="subpanel">
+        <h2>异步任务</h2>
+        <ul class="record-list">
+          {% for job in worker_jobs %}
+          <li>
+            <strong>{{ job.job_type }}</strong>
+            <span>{{ job.status }}</span>
+          </li>
+          {% else %}
+          <li>暂无异步任务</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="subpanel">
+        <h2>同步运行</h2>
+        <ul class="record-list">
+          {% for run in sync_runs %}
+          <li>
+            <strong>{{ run.trigger_type }}</strong>
+            <span>{{ run.status }}</span>
+          </li>
+          {% else %}
+          <li>暂无同步记录</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+  </section>
+</main>
+{% endblock %}

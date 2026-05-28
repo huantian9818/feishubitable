@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="page-shell">
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">系统设置</p>
+        <h1>飞书应用配置</h1>
+      </div>
+    </div>
+    <form method="post" action="/settings" class="stack-form">
+      <label>
+        <span>App ID</span>
+        <input name="app_id" value="{{ setting.app_id if setting else '' }}" />
+      </label>
+      <label>
+        <span>App Secret</span>
+        <input name="app_secret" value="{{ setting.app_secret if setting else '' }}" />
+      </label>
+      <label>
+        <span>Tenant Key</span>
+        <input name="tenant_key" value="{{ setting.tenant_key if setting else '' }}" />
+      </label>
+      <label>
+        <span>时区</span>
+        <input name="timezone" value="{{ setting.timezone if setting else 'Asia/Shanghai' }}" />
+      </label>
+      <button type="submit">保存设置</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

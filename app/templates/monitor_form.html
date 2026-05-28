@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="page-shell">
+  <section class="panel narrow-panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">新增监控</p>
+        <h1>添加飞书多维表格监控源</h1>
+      </div>
+    </div>
+
+    <form method="post" action="/monitors" class="stack-form">
+      <label>
+        <span>名称</span>
+        <input name="name" required />
+      </label>
+      <label>
+        <span>飞书多维表格链接</span>
+        <input name="source_url" required />
+      </label>
+      <label>
+        <span>低频全量间隔</span>
+        <select name="fallback_interval_minutes">
+          {% for interval in preset_intervals %}
+          <option value="{{ interval }}">{{ interval // 60 }} 小时</option>
+          {% endfor %}
+        </select>
+      </label>
+      <input type="hidden" name="fallback_choice" value="preset" />
+      <button type="submit">添加监控源</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

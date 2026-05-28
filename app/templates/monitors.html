@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="page-shell">
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">监控源</p>
+        <h1>监控列表</h1>
+      </div>
+      <a class="button-link" href="/monitors/new">添加监控源</a>
+    </div>
+
+    <div class="card-grid">
+      {% for monitor in monitors %}
+      <article class="monitor-card">
+        <div>
+          <h2><a href="/monitors/{{ monitor.id }}">{{ monitor.name }}</a></h2>
+          <p class="muted">{{ monitor.source_url }}</p>
+        </div>
+        <dl class="summary-list">
+          <div>
+            <dt>同步状态</dt>
+            <dd>{{ monitor.sync_status }}</dd>
+          </div>
+          <div>
+            <dt>低频全量间隔</dt>
+            <dd>{{ monitor.fallback_interval_minutes }} 分钟</dd>
+          </div>
+        </dl>
+      </article>
+      {% else %}
+      <article class="empty-state">
+        <h2>还没有监控源</h2>
+        <p>先创建一个飞书多维表格监控，系统会异步排队首轮全量同步任务。</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

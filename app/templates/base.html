@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <header class="site-header">
+      <a class="brand" href="/monitors">Feishu Bitable Monitor</a>
+      <nav class="site-nav">
+        <a href="/monitors">监控源</a>
+        <a href="/settings">设置</a>
+      </nav>
+    </header>
     {% block content %}{% endblock %}
   </body>
 </html>
