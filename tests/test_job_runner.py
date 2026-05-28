@@ -26,7 +26,7 @@ def test_job_runner_executes_manual_full_sync_job(session, monkeypatch):
 
 def test_scheduler_enqueues_fallback_job_when_monitor_is_due(session):
     from app.clock import utc_now
-    from app.models import Monitor
+    from app.models import Monitor, WorkerJob
     from worker.scheduler import enqueue_due_fallback_jobs
 
     monitor = Monitor(
@@ -40,5 +40,10 @@ def test_scheduler_enqueues_fallback_job_when_monitor_is_due(session):
     session.commit()
 
     count = enqueue_due_fallback_jobs(session)
+    jobs = session.query(WorkerJob).all()
 
     assert count == 1
+    assert len(jobs) == 1
+    assert jobs[0].job_type == "fallback_full_sync"
+    assert jobs[0].monitor_id == monitor.id
+    assert jobs[0].status == "queued"
