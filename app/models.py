@@ -2,10 +2,25 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.clock import utc_now
+from app.schemas import (
+    DEFAULT_TIMEZONE,
+    PRESET_FALLBACK_INTERVALS,
+    SUBSCRIPTION_STATUS_PENDING,
+    SYNC_STATUS_NEVER,
+    WATCH_STATUS_PENDING,
+)
 
 
 class Base(DeclarativeBase):
@@ -19,7 +34,7 @@ class AppSetting(Base):
     app_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     app_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
     tenant_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    timezone: Mapped[str] = mapped_column(Text, default="Asia/Shanghai")
+    timezone: Mapped[str] = mapped_column(Text, default=DEFAULT_TIMEZONE)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
 
@@ -31,12 +46,12 @@ class Monitor(Base):
     name: Mapped[str] = mapped_column(Text)
     source_url: Mapped[str] = mapped_column(Text)
     app_token: Mapped[str] = mapped_column(Text)
-    fallback_interval_minutes: Mapped[int] = mapped_column(Integer)
+    fallback_interval_minutes: Mapped[int] = mapped_column(Integer, default=PRESET_FALLBACK_INTERVALS[0])
     next_fallback_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    watch_status: Mapped[str] = mapped_column(Text, default="pending")
-    subscription_status: Mapped[str] = mapped_column(Text, default="pending")
-    sync_status: Mapped[str] = mapped_column(Text, default="never")
+    watch_status: Mapped[str] = mapped_column(Text, default=WATCH_STATUS_PENDING)
+    subscription_status: Mapped[str] = mapped_column(Text, default=SUBSCRIPTION_STATUS_PENDING)
+    sync_status: Mapped[str] = mapped_column(Text, default=SYNC_STATUS_NEVER)
     last_event_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_event_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -72,7 +87,13 @@ class BitableTable(Base):
 
 class CurrentRecord(Base):
     __tablename__ = "current_records"
-    __table_args__ = (UniqueConstraint("monitor_id", "table_id", "record_id"),)
+    __table_args__ = (
+        UniqueConstraint("monitor_id", "table_id", "record_id"),
+        ForeignKeyConstraint(
+            ("monitor_id", "table_id"),
+            ("bitable_tables.monitor_id", "bitable_tables.table_id"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     monitor_id: Mapped[int] = mapped_column(ForeignKey("monitors.id"))

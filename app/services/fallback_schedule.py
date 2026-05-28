@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 
+from app.schemas import PRESET_FALLBACK_INTERVALS
 
-PRESET_INTERVALS = [360, 720, 1440, 4320]
+PRESET_INTERVALS = PRESET_FALLBACK_INTERVALS
 
 
 def compute_next_fallback_at(anchor: datetime, minutes: int) -> datetime:
