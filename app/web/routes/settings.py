@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.main import get_session, templates
 from app.models import AppSetting
+from app.web.dependencies import get_session
+from app.web.templating import templates
 
 router = APIRouter()
 

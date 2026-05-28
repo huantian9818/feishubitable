@@ -1,6 +1,3 @@
-from datetime import datetime
-
-
 def test_create_monitor_enqueues_initial_full_sync_job(client, session):
     from app.models import AppSetting, Monitor, WorkerJob
 
@@ -38,3 +35,71 @@ def test_monitor_detail_shows_interval_and_current_status(client, seeded_monitor
     assert response.status_code == 200
     assert "低频全量间隔" in response.text
     assert "下一次低频全量时间" in response.text
+
+
+def test_create_monitor_with_invalid_link_rerenders_form_with_error(client, session):
+    from app.models import Monitor, WorkerJob
+
+    response = client.post(
+        "/monitors",
+        data={
+            "name": "账号管理",
+            "source_url": "https://example.feishu.cn/wiki/not-a-bitable-link",
+            "fallback_choice": "preset",
+            "fallback_interval_minutes": "360",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+    assert "仅支持飞书多维表格链接" in response.text
+    assert session.query(Monitor).count() == 0
+    assert session.query(WorkerJob).count() == 0
+
+
+def test_create_monitor_with_invalid_interval_rerenders_form_with_error(client, session):
+    from app.models import Monitor, WorkerJob
+
+    response = client.post(
+        "/monitors",
+        data={
+            "name": "账号管理",
+            "source_url": "https://example.feishu.cn/base/app123",
+            "fallback_choice": "preset",
+            "fallback_interval_minutes": "123",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 200
+    assert "请选择允许的低频全量间隔" in response.text
+    assert session.query(Monitor).count() == 0
+    assert session.query(WorkerJob).count() == 0
+
+
+def test_create_monitor_rolls_back_when_initial_job_enqueue_fails(client_no_raise, session):
+    from sqlalchemy import event
+
+    from app.models import Monitor, WorkerJob
+
+    def fail_worker_job_insert(_mapper, _connection, _target):
+        raise RuntimeError("queue unavailable")
+
+    event.listen(WorkerJob, "before_insert", fail_worker_job_insert)
+    try:
+        response = client_no_raise.post(
+            "/monitors",
+            data={
+                "name": "账号管理",
+                "source_url": "https://example.feishu.cn/base/app123",
+                "fallback_choice": "preset",
+                "fallback_interval_minutes": "360",
+            },
+            follow_redirects=False,
+        )
+    finally:
+        event.remove(WorkerJob, "before_insert", fail_worker_job_insert)
+
+    assert response.status_code == 500
+    assert session.query(Monitor).count() == 0
+    assert session.query(WorkerJob).count() == 0

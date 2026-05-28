@@ -9,9 +9,10 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import create_sqlite_engine
-import app.main as main_module
+from app.main import create_app
 from app.models import Base, Monitor
 from app.services.fallback_schedule import compute_next_fallback_at
+from app.web.dependencies import get_session
 
 
 @pytest.fixture
@@ -25,14 +26,24 @@ def session(tmp_path):
 
 @pytest.fixture
 def client(session):
-    get_session = getattr(main_module, "get_session", None)
-    if get_session is not None:
-        main_module.app.dependency_overrides[get_session] = lambda: session
+    app = create_app(init_database=False)
+    app.dependency_overrides[get_session] = lambda: session
 
     try:
-        yield TestClient(main_module.app)
+        yield TestClient(app)
     finally:
-        main_module.app.dependency_overrides.clear()
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client_no_raise(session):
+    app = create_app(init_database=False)
+    app.dependency_overrides[get_session] = lambda: session
+
+    try:
+        yield TestClient(app, raise_server_exceptions=False)
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture

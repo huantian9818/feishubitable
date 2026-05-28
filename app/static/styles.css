@@ -116,6 +116,19 @@ select {
   gap: 1rem;
 }
 
+.form-errors {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 1rem;
+  color: #9f1239;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.form-errors p {
+  margin: 0;
+}
+
 .stack-form label span {
   font-weight: 600;
 }

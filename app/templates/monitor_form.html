@@ -10,20 +10,33 @@
       </div>
     </div>
 
+    {% if errors %}
+    <div class="form-errors">
+      {% for error in errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <form method="post" action="/monitors" class="stack-form">
       <label>
         <span>名称</span>
-        <input name="name" required />
+        <input name="name" value="{{ form_data.name if form_data else '' }}" required />
       </label>
       <label>
         <span>飞书多维表格链接</span>
-        <input name="source_url" required />
+        <input name="source_url" value="{{ form_data.source_url if form_data else '' }}" required />
       </label>
       <label>
         <span>低频全量间隔</span>
         <select name="fallback_interval_minutes">
           {% for interval in preset_intervals %}
-          <option value="{{ interval }}">{{ interval // 60 }} 小时</option>
+          <option
+            value="{{ interval }}"
+            {% if form_data and form_data.fallback_interval_minutes == interval|string %}selected{% endif %}
+          >
+            {{ interval // 60 }} 小时
+          </option>
           {% endfor %}
         </select>
       </label>
