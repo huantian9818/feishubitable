@@ -12,3 +12,12 @@ class FeishuBitableClient:
 
     def list_bitable_records(self, app_token: str, table_id: str) -> list[dict]:
         raise NotImplementedError
+
+    def get_bitable_record(self, app_token: str, table_id: str, record_id: str) -> dict:
+        raise NotImplementedError
+
+    def refresh_bitable_subscription(self, app_token: str) -> dict | None:
+        raise NotImplementedError
+
+    def subscribe_bitable(self, app_token: str) -> dict | None:
+        return self.refresh_bitable_subscription(app_token)
