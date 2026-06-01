@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.models import Monitor
+from app.schemas import SUBSCRIPTION_STATUS_SUBSCRIBED
 
 
 def resubscribe_monitor(session, monitor_id: int, client):
@@ -16,7 +17,7 @@ def resubscribe_monitor(session, monitor_id: int, client):
         else:
             result = None
 
-        monitor.subscription_status = "success"
+        monitor.subscription_status = SUBSCRIPTION_STATUS_SUBSCRIBED
         monitor.subscription_error = None
         session.commit()
         return result
