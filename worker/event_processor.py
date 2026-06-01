@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 import json
 
 from app.models import EventLog, Monitor, WorkerJob
-from app.services.incremental_sync import run_incremental_sync
 
 BITABLE_RECORD_CHANGED = "drive.file.bitable_record_changed_v1"
 BITABLE_FIELD_CHANGED = "drive.file.bitable_field_changed_v1"
+RECORD_CHANGED_INCREMENTAL_JOB = "record_changed_incremental"
 FIELD_CHANGED_TABLE_RESYNC_JOB = "field_changed_table_resync"
 
 
@@ -25,6 +25,17 @@ def _event_monitor_token(event: dict) -> str:
 def _field_changed_payload(table_id: str, source_event_id: str) -> str:
     return json.dumps(
         {"table_id": table_id, "source_event_id": source_event_id},
+        ensure_ascii=False,
+    )
+
+
+def _record_changed_payload(table_id: str, source_event_id: str, actions: list[dict]) -> str:
+    return json.dumps(
+        {
+            "table_id": table_id,
+            "source_event_id": source_event_id,
+            "actions": actions,
+        },
         ensure_ascii=False,
     )
 
@@ -74,6 +85,26 @@ def _enqueue_field_changed_table_resync(session, monitor_id: int, table_id: str,
     )
 
 
+def _enqueue_record_changed_incremental(
+    session,
+    monitor_id: int,
+    table_id: str,
+    source_event_id: str,
+    actions: list[dict],
+) -> None:
+    if not table_id:
+        raise ValueError("Record change event missing table_id")
+
+    session.add(
+        WorkerJob(
+            job_type=RECORD_CHANGED_INCREMENTAL_JOB,
+            monitor_id=monitor_id,
+            payload_json=_record_changed_payload(table_id, source_event_id, actions),
+            status="queued",
+        )
+    )
+
+
 def record_event(session, payload: dict) -> bool:
     header = payload["header"]
     if session.query(EventLog).filter_by(event_id=header["event_id"]).one_or_none() is not None:
@@ -112,12 +143,12 @@ def process_event(session, event_log_id: int, client) -> EventLog:
 
     try:
         if header["event_type"] == BITABLE_RECORD_CHANGED:
-            run_incremental_sync(
-                session=session,
-                monitor_id=event_log.monitor_id,
-                table_id=event["table_id"],
-                actions=event.get("action_list", []),
-                client=client,
+            _enqueue_record_changed_incremental(
+                session,
+                event_log.monitor_id,
+                str(event.get("table_id") or ""),
+                header["event_id"],
+                list(event.get("action_list", [])),
             )
         elif header["event_type"] == BITABLE_FIELD_CHANGED:
             _enqueue_field_changed_table_resync(

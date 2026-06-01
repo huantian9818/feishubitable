@@ -122,8 +122,8 @@ def test_record_event_accepts_legacy_app_token_payload(session):
     assert session.query(EventLog).filter_by(event_id="evt-legacy").count() == 1
 
 
-def test_handle_event_payload_processes_single_record_and_deduplicates(session):
-    from app.models import BitableTable, CurrentRecord, EventLog, Monitor, SyncRun
+def test_handle_record_changed_event_enqueues_incremental_job_without_running_sync(session):
+    from app.models import EventLog, Monitor, SyncRun, WorkerJob
     from worker.event_listener import handle_event_payload
 
     monitor = Monitor(
@@ -133,26 +133,6 @@ def test_handle_event_payload_processes_single_record_and_deduplicates(session):
         fallback_interval_minutes=360,
     )
     session.add(monitor)
-    session.commit()
-    session.add(
-        BitableTable(
-            monitor_id=monitor.id,
-            table_id="tbl1",
-            table_name="账号表",
-            field_schema_json=json.dumps([{"field_name": "姓名"}], ensure_ascii=False),
-        )
-    )
-    session.commit()
-    session.add(
-        CurrentRecord(
-            monitor_id=monitor.id,
-            table_id="tbl1",
-            record_id="rec1",
-            sort_order=1,
-            fields_json='{"姓名":"旧值"}',
-            display_text="旧值",
-        )
-    )
     session.commit()
 
     payload = {
@@ -168,31 +148,82 @@ def test_handle_event_payload_processes_single_record_and_deduplicates(session):
         },
     }
 
-    class FakeClient:
-        def get_bitable_record(self, app_token, table_id, record_id):
-            assert app_token == "app123"
-            assert table_id == "tbl1"
-            assert record_id == "rec1"
-            return {"record_id": record_id, "fields": {"姓名": "新值"}}
-
-    handled = handle_event_payload(session, payload, FakeClient())
-    duplicated = handle_event_payload(session, payload, FakeClient())
+    handled = handle_event_payload(session, payload, client=object())
+    duplicated = handle_event_payload(session, payload, client=object())
 
     event_log = session.query(EventLog).filter_by(event_id="evt-3").one()
-    record = session.query(CurrentRecord).filter_by(record_id="rec1").one()
-    sync_runs = session.query(SyncRun).filter_by(monitor_id=monitor.id).all()
+    jobs = session.query(WorkerJob).order_by(WorkerJob.id.asc()).all()
+    sync_runs = session.query(SyncRun).all()
     session.refresh(monitor)
 
     assert handled is True
     assert duplicated is False
     assert event_log.process_status == "success"
     assert event_log.error_message is None
-    assert record.display_text == "新值"
     assert monitor.last_event_type == "drive.file.bitable_record_changed_v1"
     assert monitor.last_event_at == datetime(2026, 5, 28, 1, 17, 25, 198000)
-    assert len(sync_runs) == 1
-    assert sync_runs[0].trigger_type == "event_incremental"
-    assert sync_runs[0].status == "success"
+    assert len(jobs) == 1
+    assert jobs[0].job_type == "record_changed_incremental"
+    assert json.loads(jobs[0].payload_json) == {
+        "table_id": "tbl1",
+        "source_event_id": "evt-3",
+        "actions": [{"record_id": "rec1", "action": "record_edited"}],
+    }
+    assert sync_runs == []
+
+
+def test_record_changed_event_keeps_every_job_for_the_same_subtable(session):
+    from app.models import EventLog, Monitor, WorkerJob
+    from worker.event_listener import handle_event_payload
+
+    monitor = Monitor(
+        name="账号管理",
+        source_url="https://example.feishu.cn/base/app123",
+        app_token="app123",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+
+    first_payload = {
+        "header": {
+            "event_id": "evt-record-a1",
+            "event_type": "drive.file.bitable_record_changed_v1",
+            "create_time": "1779931045198",
+        },
+        "event": {
+            "file_token": "app123",
+            "table_id": "tbl_a",
+            "action_list": [{"record_id": "rec1", "action": "record_edited"}],
+        },
+    }
+    second_payload = {
+        "header": {
+            "event_id": "evt-record-a2",
+            "event_type": "drive.file.bitable_record_changed_v1",
+            "create_time": "1779931046200",
+        },
+        "event": {
+            "file_token": "app123",
+            "table_id": "tbl_a",
+            "action_list": [{"record_id": "rec2", "action": "record_deleted"}],
+        },
+    }
+
+    assert handle_event_payload(session, first_payload, client=object()) is True
+    assert handle_event_payload(session, second_payload, client=object()) is True
+
+    event_logs = session.query(EventLog).order_by(EventLog.id.asc()).all()
+    jobs = session.query(WorkerJob).order_by(WorkerJob.id.asc()).all()
+
+    assert [event_log.event_id for event_log in event_logs] == ["evt-record-a1", "evt-record-a2"]
+    assert all(event_log.process_status == "success" for event_log in event_logs)
+    assert [job.job_type for job in jobs] == ["record_changed_incremental", "record_changed_incremental"]
+    assert [json.loads(job.payload_json)["source_event_id"] for job in jobs] == [
+        "evt-record-a1",
+        "evt-record-a2",
+    ]
+    assert [json.loads(job.payload_json)["table_id"] for job in jobs] == ["tbl_a", "tbl_a"]
 
 
 def test_handle_field_changed_event_replaces_queued_job_and_keeps_table_order(session):
@@ -286,7 +317,7 @@ def test_handle_field_changed_event_with_non_record_action_items(session):
     assert json.loads(job.payload_json) == {"table_id": "tbl_a", "source_event_id": "evt-field-action"}
 
 
-def test_process_event_marks_event_log_failed_when_incremental_sync_raises(session, monkeypatch):
+def test_process_event_marks_event_log_failed_when_record_changed_enqueue_raises(session, monkeypatch):
     from app.models import EventLog, Monitor
     from worker.event_processor import process_event, record_event
 
@@ -315,17 +346,17 @@ def test_process_event_marks_event_log_failed_when_incremental_sync_raises(sessi
     assert record_event(session, payload) is True
     event_log = session.query(EventLog).filter_by(event_id="evt-4").one()
 
-    def fail_incremental_sync(**_kwargs):
-        raise RuntimeError("incremental failed")
+    def fail_enqueue(*_args, **_kwargs):
+        raise RuntimeError("enqueue failed")
 
-    monkeypatch.setattr("worker.event_processor.run_incremental_sync", fail_incremental_sync)
+    monkeypatch.setattr("worker.event_processor._enqueue_record_changed_incremental", fail_enqueue)
 
-    with pytest.raises(RuntimeError, match="incremental failed"):
+    with pytest.raises(RuntimeError, match="enqueue failed"):
         process_event(session, event_log.id, client=object())
 
     session.refresh(event_log)
     assert event_log.process_status == "failed"
-    assert event_log.error_message == "incremental failed"
+    assert event_log.error_message == "enqueue failed"
 
 
 def test_resubscribe_monitor_marks_subscription_as_subscribed(session):
