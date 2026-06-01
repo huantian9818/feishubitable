@@ -38,5 +38,76 @@
       </div>
     </dl>
   </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Current Data</p>
+        <h2>当前数据</h2>
+      </div>
+      <span class="muted">
+        {% if current_record_view.active_table_id %}
+        当前子表：{{ current_record_view.active_table_id }}
+        {% else %}
+        暂无子表数据
+        {% endif %}
+      </span>
+    </div>
+
+    {% if current_record_view.tabs %}
+    <nav class="tab-row">
+      {% for tab in current_record_view.tabs %}
+      <a
+        class="tab-chip{% if tab.active %} active{% endif %}"
+        href="/monitors/{{ monitor.id }}?tab={{ tab.id }}&page=1"
+      >
+        {{ tab.label }}（{{ tab.count }}）
+      </a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+
+    {% if current_record_view.empty %}
+    <p class="muted">当前选中子表暂无记录。</p>
+    {% else %}
+    <div class="table-shell">
+      <table class="data-table">
+        <thead>
+          <tr>
+            {% for header in current_record_view.headers %}
+            <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in current_record_view.rows %}
+          <tr>
+            {% for cell in row %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if current_record_view.pagination.total_pages > 1 %}
+    <nav class="pagination-row">
+      {% for page_number in current_record_view.pagination.pages %}
+      {% if page_number is none %}
+      <span class="page-ellipsis">…</span>
+      {% else %}
+      <a
+        class="page-chip{% if page_number == current_record_view.pagination.page %} active{% endif %}"
+        href="/monitors/{{ monitor.id }}?tab={{ current_record_view.active_table_id }}&page={{ page_number }}"
+      >
+        第 {{ page_number }} 页
+      </a>
+      {% endif %}
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </section>
 </main>
 {% endblock %}

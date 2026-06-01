@@ -37,6 +37,16 @@ def test_monitor_detail_shows_interval_and_current_status(client, seeded_monitor
     assert "下一次低频全量时间" in response.text
 
 
+def test_monitor_detail_renders_table_tabs_and_pagination(client, seeded_bitable_monitor):
+    response = client.get(f"/monitors/{seeded_bitable_monitor.id}?tab=tbl1&page=1")
+
+    assert response.status_code == 200
+    assert "当前数据" in response.text
+    assert "员工表" in response.text
+    assert "<table" in response.text
+    assert "page=1" in response.text
+
+
 def test_create_monitor_with_invalid_link_rerenders_form_with_error(client, session):
     from app.models import Monitor, WorkerJob
 
@@ -103,3 +113,32 @@ def test_create_monitor_rolls_back_when_initial_job_enqueue_fails(client_no_rais
     assert response.status_code == 500
     assert session.query(Monitor).count() == 0
     assert session.query(WorkerJob).count() == 0
+
+
+def test_monitor_runs_page_limits_history_to_recent_records(client, session, seeded_monitor):
+    from app.models import SyncRun, WorkerJob
+
+    for index in range(1, 56):
+        session.add(
+            WorkerJob(
+                job_type=f"job_{index:03d}",
+                monitor_id=seeded_monitor.id,
+                status="success",
+            )
+        )
+        session.add(
+            SyncRun(
+                monitor_id=seeded_monitor.id,
+                trigger_type=f"run_{index:03d}",
+                status="success",
+            )
+        )
+    session.commit()
+
+    response = client.get(f"/monitors/{seeded_monitor.id}/runs")
+
+    assert response.status_code == 200
+    assert "job_055" in response.text
+    assert "run_055" in response.text
+    assert "job_005" not in response.text
+    assert "run_005" not in response.text

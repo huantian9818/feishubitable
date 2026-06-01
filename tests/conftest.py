@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db import create_sqlite_engine
 from app.main import create_app
-from app.models import Base, Monitor
+from app.models import Base, BitableTable, CurrentRecord, Monitor
 from app.services.fallback_schedule import compute_next_fallback_at
 from app.web.dependencies import get_session
 
@@ -57,5 +57,58 @@ def seeded_monitor(session):
         next_fallback_sync_at=compute_next_fallback_at(anchor, 360),
     )
     session.add(monitor)
+    session.commit()
+    return monitor
+
+
+@pytest.fixture
+def seeded_bitable_monitor(session):
+    anchor = datetime(2026, 5, 28, 9, 0, 0)
+    monitor = Monitor(
+        name="员工信息监控",
+        source_url="https://example.feishu.cn/base/app_bitable",
+        app_token="app_bitable",
+        fallback_interval_minutes=360,
+        next_fallback_sync_at=compute_next_fallback_at(anchor, 360),
+        current_record_count=22,
+    )
+    session.add(monitor)
+    session.flush()
+
+    session.add_all(
+        [
+            BitableTable(
+                monitor_id=monitor.id,
+                table_id="tbl1",
+                table_name="员工表",
+            ),
+            BitableTable(
+                monitor_id=monitor.id,
+                table_id="tbl2",
+                table_name="资产表",
+            ),
+        ]
+    )
+
+    employee_rows = [
+        CurrentRecord(
+            monitor_id=monitor.id,
+            table_id="tbl1",
+            record_id=f"rec_{index:02d}",
+            sort_order=index,
+            fields_json='{"姓名":"员工%02d","部门":"研发","状态":"在职"}' % index,
+            display_text=f"员工{index:02d} 研发 在职",
+        )
+        for index in range(1, 22)
+    ]
+    asset_row = CurrentRecord(
+        monitor_id=monitor.id,
+        table_id="tbl2",
+        record_id="asset_01",
+        sort_order=1,
+        fields_json='{"资产编号":"NB-001","负责人":"员工01"}',
+        display_text="NB-001 员工01",
+    )
+    session.add_all([*employee_rows, asset_row])
     session.commit()
     return monitor

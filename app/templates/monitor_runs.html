@@ -12,13 +12,47 @@
     </div>
 
     <div class="two-column">
-      <section class="subpanel">
+      <section class="subpanel monitor-run-panel">
         <h2>异步任务</h2>
-        <ul class="record-list">
+        <p class="muted">仅显示最近 {{ run_history_limit }} 条任务记录。</p>
+        <ul class="record-list monitor-run-list">
           {% for job in worker_jobs %}
-          <li>
-            <strong>{{ job.job_type }}</strong>
-            <span>{{ job.status }}</span>
+          <li class="run-card">
+            <div class="run-card-head">
+              <div>
+                <strong>#{{ job.id }} {{ job.job_type }}</strong>
+                <div class="run-card-status">状态：{{ job.status }}</div>
+              </div>
+              <div class="run-card-meta">
+                <div>创建：{{ job.created_at or "-" }}</div>
+                <div>计划执行：{{ job.run_after or "-" }}</div>
+              </div>
+            </div>
+
+            <dl class="run-card-grid">
+              <div>
+                <dt class="run-card-label">开始时间</dt>
+                <dd class="run-card-value">{{ job.started_at or "-" }}</dd>
+              </div>
+              <div>
+                <dt class="run-card-label">结束时间</dt>
+                <dd class="run-card-value">{{ job.finished_at or "-" }}</dd>
+              </div>
+            </dl>
+
+            {% if job.error_message %}
+            <div class="run-card-error">
+              <strong>错误信息</strong>
+              <pre class="run-card-pre">{{ job.error_message }}</pre>
+            </div>
+            {% endif %}
+
+            {% if job.payload_json %}
+            <details class="run-card-details">
+              <summary>任务载荷</summary>
+              <pre class="run-card-pre">{{ job.payload_json }}</pre>
+            </details>
+            {% endif %}
           </li>
           {% else %}
           <li>暂无异步任务</li>
@@ -26,13 +60,47 @@
         </ul>
       </section>
 
-      <section class="subpanel">
+      <section class="subpanel monitor-run-panel">
         <h2>同步运行</h2>
-        <ul class="record-list">
+        <p class="muted">仅显示最近 {{ run_history_limit }} 条同步记录。</p>
+        <ul class="record-list monitor-run-list">
           {% for run in sync_runs %}
-          <li>
-            <strong>{{ run.trigger_type }}</strong>
-            <span>{{ run.status }}</span>
+          <li class="run-card">
+            <div class="run-card-head">
+              <div>
+                <strong>#{{ run.id }} {{ run.trigger_type }}</strong>
+                <div class="run-card-status">状态：{{ run.status }}</div>
+              </div>
+              <div class="run-card-meta">
+                <div>开始：{{ run.started_at or "-" }}</div>
+                <div>结束：{{ run.finished_at or "-" }}</div>
+              </div>
+            </div>
+
+            <dl class="run-card-grid">
+              <div>
+                <dt class="run-card-label">耗时</dt>
+                <dd class="run-card-value">{{ run.duration_ms ~ " ms" if run.duration_ms is not none else "-" }}</dd>
+              </div>
+              <div>
+                <dt class="run-card-label">结果摘要</dt>
+                <dd class="run-card-value">{{ "成功" if run.status == "success" else "失败" if run.status == "failed" else "进行中" }}</dd>
+              </div>
+            </dl>
+
+            {% if run.error_message %}
+            <div class="run-card-error">
+              <strong>错误信息</strong>
+              <pre class="run-card-pre">{{ run.error_message }}</pre>
+            </div>
+            {% endif %}
+
+            {% if run.stats_json %}
+            <details class="run-card-details">
+              <summary>统计信息</summary>
+              <pre class="run-card-pre">{{ run.stats_json }}</pre>
+            </details>
+            {% endif %}
           </li>
           {% else %}
           <li>暂无同步记录</li>
