@@ -177,6 +177,17 @@ class FeishuBitableClient:
             raise FeishuApiError(payload.get("msg", "Failed to fetch bitable metadata"))
         return payload.get("data", {})
 
+    def resolve_wiki_node(self, wiki_token: str) -> dict:
+        payload = self._request_json(
+            httpx.get,
+            "https://open.feishu.cn/open-apis/wiki/v2/spaces/get_node",
+            headers=self._headers(),
+            params={"token": wiki_token},
+        )
+        if payload.get("code") != 0:
+            raise FeishuApiError(payload.get("msg", "Failed to resolve wiki node"))
+        return payload.get("data", {}).get("node", {})
+
     def get_bitable_tables(self, app_token: str) -> list[dict]:
         return self._paginate_get(
             f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables",
@@ -228,6 +239,8 @@ class FeishuBitableClient:
         builder = lark.EventDispatcherHandler.builder("", "")
         if hasattr(builder, "register_p2_drive_file_bitable_record_changed_v1"):
             builder = builder.register_p2_drive_file_bitable_record_changed_v1(_handle)
+        if hasattr(builder, "register_p2_drive_file_bitable_field_changed_v1"):
+            builder = builder.register_p2_drive_file_bitable_field_changed_v1(_handle)
 
         client = lark.ws.Client(
             app_id,

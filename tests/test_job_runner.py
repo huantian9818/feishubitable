@@ -1,3 +1,6 @@
+import json
+
+
 def test_job_runner_executes_manual_full_sync_job(session, monkeypatch):
     from app.models import Monitor, WorkerJob
     from worker.job_runner import run_next_job
@@ -22,6 +25,42 @@ def test_job_runner_executes_manual_full_sync_job(session, monkeypatch):
     run_next_job(session, client=object())
 
     assert called == [(monitor.id, "manual_full")]
+
+
+def test_job_runner_executes_field_changed_table_resync_job(session, monkeypatch):
+    from app.models import Monitor, WorkerJob
+    from worker.job_runner import run_next_job
+
+    monitor = Monitor(
+        name="账号管理",
+        source_url="https://example.feishu.cn/base/app123",
+        app_token="app123",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+    session.add(
+        WorkerJob(
+            job_type="field_changed_table_resync",
+            monitor_id=monitor.id,
+            payload_json=json.dumps({"table_id": "tbl_accounts", "source_event_id": "evt-1"}, ensure_ascii=False),
+            status="queued",
+        )
+    )
+    session.commit()
+
+    called = []
+    monkeypatch.setattr(
+        "worker.job_runner.run_table_resync",
+        lambda session, monitor_id, table_id, client, trigger_type: called.append(
+            (monitor_id, table_id, trigger_type)
+        ),
+        raising=False,
+    )
+
+    run_next_job(session, client=object())
+
+    assert called == [(monitor.id, "tbl_accounts", "event_field_table_resync")]
 
 
 def test_scheduler_enqueues_fallback_job_when_monitor_is_due(session):

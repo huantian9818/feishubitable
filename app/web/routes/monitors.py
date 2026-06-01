@@ -4,10 +4,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 import json
 
+from app.clients.feishu import FeishuApiError, FeishuBitableClient
 from app.clock import utc_now
 from app.models import BitableTable, CurrentRecord, Monitor, SyncRun, WorkerJob
 from app.services.fallback_schedule import PRESET_INTERVALS, compute_next_fallback_at
-from app.services.link_parser import parse_bitable_link
+from app.services.link_parser import resolve_bitable_app_token
 from app.services.view_models import build_current_record_view
 from app.web.dependencies import get_session
 from app.web.templating import templates
@@ -98,8 +99,8 @@ def create_monitor(
     }
 
     try:
-        app_token = parse_bitable_link(cleaned_source_url)
-    except ValueError as error:
+        app_token = resolve_bitable_app_token(cleaned_source_url, FeishuBitableClient())
+    except (ValueError, FeishuApiError) as error:
         return _render_monitor_form(request, errors=[str(error)], form_data=form_data)
 
     if fallback_interval_minutes not in PRESET_INTERVALS:

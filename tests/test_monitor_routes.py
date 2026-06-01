@@ -29,6 +29,39 @@ def test_create_monitor_enqueues_initial_full_sync_job(client, session):
     assert job.status == "queued"
 
 
+def test_create_monitor_resolves_wiki_bitable_link(client, session, monkeypatch):
+    from app.models import Monitor, WorkerJob
+
+    monkeypatch.setattr(
+        "app.web.routes.monitors.FeishuBitableClient.resolve_wiki_node",
+        lambda self, wiki_token: {
+            "obj_type": "bitable",
+            "obj_token": f"app_from_{wiki_token}",
+        },
+    )
+
+    response = client.post(
+        "/monitors",
+        data={
+            "name": "知识库账号管理",
+            "source_url": "https://example.feishu.cn/wiki/SioWwTP5Uiryn8kIez6cjjDMnNM",
+            "fallback_choice": "preset",
+            "fallback_interval_minutes": "360",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    monitor = session.query(Monitor).one()
+    assert monitor.source_url.endswith("/wiki/SioWwTP5Uiryn8kIez6cjjDMnNM")
+    assert monitor.app_token == "app_from_SioWwTP5Uiryn8kIez6cjjDMnNM"
+
+    job = session.query(WorkerJob).one()
+    assert job.job_type == "initial_full_sync"
+    assert job.monitor_id == monitor.id
+
+
 def test_monitor_detail_shows_interval_and_current_status(client, seeded_monitor):
     response = client.get(f"/monitors/{seeded_monitor.id}")
 
@@ -54,7 +87,7 @@ def test_create_monitor_with_invalid_link_rerenders_form_with_error(client, sess
         "/monitors",
         data={
             "name": "账号管理",
-            "source_url": "https://example.feishu.cn/wiki/not-a-bitable-link",
+            "source_url": "https://example.feishu.cn/docx/not-a-bitable-link",
             "fallback_choice": "preset",
             "fallback_interval_minutes": "360",
         },
