@@ -158,3 +158,16 @@ class WorkerJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
     monitor: Mapped[Monitor | None] = relationship(back_populates="worker_jobs")
+
+
+class TableJobLease(Base):
+    __tablename__ = "table_job_leases"
+    __table_args__ = (UniqueConstraint("monitor_id", "table_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    monitor_id: Mapped[int] = mapped_column(ForeignKey("monitors.id"))
+    table_id: Mapped[str] = mapped_column(Text)
+    worker_id: Mapped[str] = mapped_column(Text)
+    lease_expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)

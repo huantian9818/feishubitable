@@ -1,6 +1,60 @@
 import json
 
 
+def test_try_acquire_table_job_lease_blocks_the_same_subtable(session):
+    from app.models import Monitor
+    from worker.table_job_leases import try_acquire_table_job_lease
+
+    monitor = Monitor(
+        name="账号管理",
+        source_url="https://example.feishu.cn/base/app123",
+        app_token="app123",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-a") is True
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-b") is False
+
+
+def test_try_acquire_table_job_lease_allows_a_different_subtable(session):
+    from app.models import Monitor
+    from worker.table_job_leases import try_acquire_table_job_lease
+
+    monitor = Monitor(
+        name="账号管理",
+        source_url="https://example.feishu.cn/base/app123",
+        app_token="app123",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-a") is True
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_assets", "worker-b") is True
+
+
+def test_release_table_job_lease_frees_the_subtable(session):
+    from app.models import Monitor
+    from worker.table_job_leases import release_table_job_lease, try_acquire_table_job_lease
+
+    monitor = Monitor(
+        name="账号管理",
+        source_url="https://example.feishu.cn/base/app123",
+        app_token="app123",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-a") is True
+
+    release_table_job_lease(session, monitor.id, "tbl_accounts", "worker-a")
+
+    assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-b") is True
+
+
 def test_job_runner_executes_manual_full_sync_job(session, monkeypatch):
     from app.models import Monitor, WorkerJob
     from worker.job_runner import run_next_job
