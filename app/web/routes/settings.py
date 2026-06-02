@@ -24,7 +24,6 @@ def save_settings(
     app_id: str = Form(""),
     app_secret: str = Form(""),
     tenant_key: str = Form(""),
-    timezone: str = Form("Asia/Shanghai"),
     session: Session = Depends(get_session),
 ):
     setting = session.query(AppSetting).order_by(AppSetting.id).first()
@@ -34,7 +33,6 @@ def save_settings(
     setting.app_id = app_id.strip() or None
     setting.app_secret = app_secret.strip() or None
     setting.tenant_key = tenant_key.strip() or None
-    setting.timezone = timezone.strip() or "Asia/Shanghai"
 
     session.add(setting)
     session.commit()

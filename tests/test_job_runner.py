@@ -55,32 +55,6 @@ def test_release_table_job_lease_frees_the_subtable(session):
     assert try_acquire_table_job_lease(session, monitor.id, "tbl_accounts", "worker-b") is True
 
 
-def test_job_runner_executes_manual_full_sync_job(session, monkeypatch):
-    from app.models import Monitor, WorkerJob
-    from worker.job_runner import run_next_job
-
-    monitor = Monitor(
-        name="账号管理",
-        source_url="https://example.feishu.cn/base/app123",
-        app_token="app123",
-        fallback_interval_minutes=360,
-    )
-    session.add(monitor)
-    session.commit()
-    session.add(WorkerJob(job_type="manual_full_sync", monitor_id=monitor.id, status="queued"))
-    session.commit()
-
-    called = []
-    monkeypatch.setattr(
-        "worker.job_runner.run_full_sync",
-        lambda session, monitor_id, client, trigger_type: called.append((monitor_id, trigger_type)),
-    )
-
-    run_next_job(session, client=object(), worker_id="worker-a")
-
-    assert called == [(monitor.id, "manual_full")]
-
-
 def test_job_runner_executes_record_changed_incremental_job(session, monkeypatch):
     from app.models import Monitor, WorkerJob
     from worker.job_runner import run_next_job
@@ -274,7 +248,7 @@ def test_record_changed_and_field_changed_share_the_same_subtable_lane(session, 
 
 
 def test_scheduler_enqueues_fallback_job_when_monitor_is_due(session):
-    from app.clock import utc_now
+    from app.clock import system_now
     from app.models import Monitor, WorkerJob
     from worker.scheduler import enqueue_due_fallback_jobs
 
@@ -283,7 +257,7 @@ def test_scheduler_enqueues_fallback_job_when_monitor_is_due(session):
         source_url="https://example.feishu.cn/base/app123",
         app_token="app123",
         fallback_interval_minutes=360,
-        next_fallback_sync_at=utc_now(),
+        next_fallback_sync_at=system_now(),
     )
     session.add(monitor)
     session.commit()

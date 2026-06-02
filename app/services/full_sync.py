@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 import logging
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.models import BitableTable, CurrentRecord, Monitor, SyncRun
 from app.services.fallback_schedule import compute_next_fallback_at
 from app.services.subscription import resubscribe_monitor
@@ -27,6 +27,13 @@ def _display_text(fields: dict) -> str:
     return " | ".join(str(value) for value in fields.values())
 
 
+def _table_fields_snapshot(client, app_token: str, table: dict) -> list[dict]:
+    list_fields = getattr(client, "list_bitable_fields", None)
+    if callable(list_fields):
+        return list_fields(app_token, table["table_id"])
+    return list(table.get("fields", []))
+
+
 def _collect_remote_snapshot(client, app_token: str) -> tuple[list[dict], int]:
     client.get_bitable_meta(app_token)
     tables = client.get_bitable_tables(app_token)
@@ -34,12 +41,13 @@ def _collect_remote_snapshot(client, app_token: str) -> tuple[list[dict], int]:
     snapshot = []
     record_count = 0
     for table in tables:
+        fields = _table_fields_snapshot(client, app_token, table)
         records = client.list_bitable_records(app_token, table["table_id"])
         snapshot.append(
             {
                 "table_id": table["table_id"],
                 "name": table["name"],
-                "fields": table.get("fields", []),
+                "fields": fields,
                 "records": records,
             }
         )
@@ -52,6 +60,7 @@ def _table_snapshot(client, app_token: str, table_id: str) -> tuple[dict, list[d
     table = next((item for item in tables if item["table_id"] == table_id), None)
     if table is None:
         raise ValueError(f"Table {table_id} does not exist in remote bitable")
+    table = {**table, "fields": _table_fields_snapshot(client, app_token, table)}
     records = client.list_bitable_records(app_token, table_id)
     return table, records
 
@@ -63,7 +72,7 @@ def _record_failed_sync(session, monitor_id: int, trigger_type: str, started_at:
     if monitor is None:
         raise ValueError(f"Monitor {monitor_id} does not exist")
 
-    finished_at = utc_now()
+    finished_at = system_now()
     message = str(error)
 
     monitor.sync_status = "failed"
@@ -125,7 +134,7 @@ def _replace_table_snapshot(session, monitor_id: int, table: dict, records: list
 
 
 def run_full_sync(session, monitor_id: int, client, trigger_type: str) -> FullSyncResult:
-    started_at = utc_now()
+    started_at = system_now()
     monitor = session.get(Monitor, monitor_id)
     if monitor is None:
         raise ValueError(f"Monitor {monitor_id} does not exist")
@@ -161,7 +170,7 @@ def run_full_sync(session, monitor_id: int, client, trigger_type: str) -> FullSy
                     )
                 )
 
-        finished_at = utc_now()
+        finished_at = system_now()
         monitor.current_record_count = count
         monitor.sync_status = "success"
         monitor.last_full_sync_at = finished_at
@@ -190,7 +199,7 @@ def run_full_sync(session, monitor_id: int, client, trigger_type: str) -> FullSy
 
 
 def run_table_resync(session, monitor_id: int, table_id: str, client, trigger_type: str) -> FullSyncResult:
-    started_at = utc_now()
+    started_at = system_now()
     monitor = session.get(Monitor, monitor_id)
     if monitor is None:
         raise ValueError(f"Monitor {monitor_id} does not exist")
@@ -204,7 +213,7 @@ def run_table_resync(session, monitor_id: int, table_id: str, client, trigger_ty
     try:
         _replace_table_snapshot(session, monitor_id, table, records)
 
-        finished_at = utc_now()
+        finished_at = system_now()
         monitor.current_record_count = session.query(CurrentRecord).filter_by(monitor_id=monitor_id).count()
         monitor.sync_status = "success"
         monitor.last_sync_at = finished_at

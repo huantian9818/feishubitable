@@ -1,14 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="page-shell">
+<main class="page-shell monitor-detail-page">
   <section class="panel">
     <div class="panel-header">
       <div>
         <p class="eyebrow">监控详情</p>
         <h1>{{ monitor.name }}</h1>
       </div>
-      <a class="button-link secondary" href="/monitors/{{ monitor.id }}/runs">查看运行记录</a>
+      <div class="header-actions">
+        <a class="button-link secondary" href="/monitors/{{ monitor.id }}/runs">查看运行记录</a>
+        <form action="/monitors/{{ monitor.id }}/delete" method="post" class="inline-action">
+          <button type="submit" class="button-link danger">删除监控源</button>
+        </form>
+      </div>
     </div>
 
     <dl class="detail-grid">
@@ -26,7 +31,7 @@
       </div>
       <div>
         <dt>下一次低频全量时间</dt>
-        <dd>{{ monitor.next_fallback_sync_at if monitor.next_fallback_sync_at else '未安排' }}</dd>
+        <dd>{{ monitor.next_fallback_sync_at|local_datetime if monitor.next_fallback_sync_at else '未安排' }}</dd>
       </div>
       <div>
         <dt>当前记录数</dt>
@@ -42,7 +47,7 @@
   <section class="panel">
     <div class="panel-header">
       <div>
-        <p class="eyebrow">Current Data</p>
+        <p class="eyebrow">数据视图</p>
         <h2>当前数据</h2>
       </div>
       <span class="muted">

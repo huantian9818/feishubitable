@@ -28,6 +28,11 @@ button,
   color: #17443a;
 }
 
+.button-link.danger {
+  background: #b42318;
+  color: #ffffff;
+}
+
 input,
 select {
   border: 1px solid #cfd8d3;
@@ -95,6 +100,18 @@ select {
   margin-bottom: 1.5rem;
 }
 
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-actions .inline-action {
+  display: flex;
+  margin: 0;
+}
+
 .panel-header h1,
 .monitor-card h2,
 .empty-state h2,
@@ -133,6 +150,14 @@ select {
   font-weight: 600;
 }
 
+.stack-note {
+  background: #f7faf8;
+  border: 1px solid #d7e3db;
+  border-radius: 1rem;
+  color: #35584f;
+  padding: 0.85rem 1rem;
+}
+
 .card-grid,
 .two-column {
   display: grid;
@@ -143,10 +168,31 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.two-column {
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .monitor-card,
 .subpanel,
 .empty-state {
   padding: 1.25rem;
+}
+
+.inline-action {
+  margin-top: 1rem;
+}
+
+.card-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-actions .inline-action {
+  margin-top: 0;
 }
 
 .muted {
@@ -234,6 +280,56 @@ dd {
   width: 100%;
 }
 
+.monitors-page .panel-header h1,
+.monitor-detail-page .panel-header h1 {
+  font-size: 1.45rem;
+}
+
+.monitors-page .eyebrow,
+.monitor-detail-page .eyebrow {
+  font-size: 0.72rem;
+}
+
+.monitors-page .muted,
+.monitor-detail-page .muted,
+.monitors-page dt,
+.monitor-detail-page dt,
+.monitor-detail-page .tab-chip,
+.monitor-detail-page .page-chip,
+.monitor-detail-page .page-ellipsis {
+  font-size: 0.84rem;
+}
+
+.monitors-page .monitor-card,
+.monitors-page .empty-state,
+.monitor-detail-page .panel {
+  font-size: 0.9rem;
+}
+
+.monitors-page .monitor-card h2,
+.monitors-page .empty-state h2,
+.monitor-detail-page .panel-header h2 {
+  font-size: 1.02rem;
+}
+
+.monitor-detail-page dd,
+.monitors-page dd,
+.monitor-detail-page .data-table,
+.monitor-detail-page .data-table th,
+.monitor-detail-page .data-table td {
+  font-size: 0.86rem;
+}
+
+.monitor-detail-page .data-table {
+  line-height: 1.3;
+}
+
+.monitor-detail-page .data-table th,
+.monitor-detail-page .data-table td {
+  font-size: 0.78rem;
+  padding: 0.45rem 0.55rem;
+}
+
 .data-table th,
 .data-table td {
   border-bottom: 1px solid #e5ebe7;
@@ -255,6 +351,14 @@ dd {
   gap: 0.75rem;
 }
 
+.monitor-run-panel h2 {
+  font-size: 0.94rem;
+}
+
+.monitor-run-panel .muted {
+  font-size: 0.8rem;
+}
+
 .monitor-run-list {
   list-style: none;
   padding: 0;
@@ -266,6 +370,7 @@ dd {
   border: 1px solid #d7dce5;
   border-radius: 1rem;
   display: block;
+  font-size: 0.88rem;
   padding: 0.95rem;
 }
 
@@ -289,7 +394,7 @@ dd {
 
 .run-card-meta,
 .run-card-label {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
 }
 
 .run-card-meta {
@@ -304,6 +409,7 @@ dd {
 }
 
 .run-card-value {
+  font-size: 0.82rem;
   margin: 0.15rem 0 0;
 }
 
@@ -320,6 +426,7 @@ dd {
 }
 
 .run-card-pre {
+  font-size: 0.78rem;
   margin: 0.5rem 0 0;
   white-space: pre-wrap;
 }
@@ -329,6 +436,10 @@ dd {
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .two-column {
+    grid-template-columns: 1fr;
   }
 
   .run-card-meta {

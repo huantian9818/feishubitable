@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import json
 
+from app.clock import timestamp_ms_to_system_time
 from app.models import EventLog, Monitor, WorkerJob
 
 BITABLE_RECORD_CHANGED = "drive.file.bitable_record_changed_v1"
@@ -12,7 +12,7 @@ FIELD_CHANGED_TABLE_RESYNC_JOB = "field_changed_table_resync"
 
 
 def _event_time_from_header(header: dict) -> datetime:
-    return datetime.fromtimestamp(int(header["create_time"]) / 1000, tz=UTC).replace(tzinfo=None)
+    return timestamp_ms_to_system_time(header["create_time"])
 
 
 def _event_monitor_token(event: dict) -> str:

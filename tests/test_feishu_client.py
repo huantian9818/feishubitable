@@ -75,6 +75,57 @@ def test_get_bitable_tables_follows_pagination(monkeypatch):
     assert request_params == [{}, {"page_token": "next-token"}]
 
 
+def test_list_bitable_fields_follows_pagination(monkeypatch):
+    from app.clients.feishu import FeishuBitableClient
+
+    FeishuBitableClient._shared_token_cache = {}
+    FeishuBitableClient._last_request_at = 0.0
+    request_params = []
+    payloads = [
+        {
+            "code": 0,
+            "data": {
+                "items": [{"field_id": "fld1", "field_name": "姓名"}],
+                "has_more": True,
+                "page_token": "next-token",
+            },
+        },
+        {
+            "code": 0,
+            "data": {
+                "items": [{"field_id": "fld2", "field_name": "备注"}],
+                "has_more": False,
+            },
+        },
+    ]
+
+    class FakeResponse:
+        status_code = 200
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, timeout, headers=None, params=None):
+        request_params.append(params or {})
+        return FakeResponse(payloads.pop(0))
+
+    monkeypatch.setattr("app.clients.feishu.httpx.get", fake_get)
+
+    client = FeishuBitableClient(app_id="cli_x", app_secret="secret_x")
+    monkeypatch.setattr(client, "get_tenant_access_token", lambda: "tenant-token")
+
+    fields = client.list_bitable_fields("app_123", "tbl_123")
+
+    assert fields == [
+        {"field_id": "fld1", "field_name": "姓名"},
+        {"field_id": "fld2", "field_name": "备注"},
+    ]
+    assert request_params == [{}, {"page_token": "next-token"}]
+
+
 def test_resolve_wiki_node(monkeypatch):
     from app.clients.feishu import FeishuBitableClient
 

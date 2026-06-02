@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import and_, select
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.models import Monitor, WorkerJob
 
 
@@ -12,7 +12,7 @@ def enqueue_due_fallback_jobs(session) -> int:
             and_(
                 Monitor.is_enabled.is_(True),
                 Monitor.next_fallback_sync_at.is_not(None),
-                Monitor.next_fallback_sync_at <= utc_now(),
+                Monitor.next_fallback_sync_at <= system_now(),
             )
         )
     ).all()

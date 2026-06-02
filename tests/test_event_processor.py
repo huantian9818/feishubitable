@@ -89,7 +89,7 @@ def test_record_event_persists_monitor_and_record_ids(session):
     assert row.table_id == "tbl1"
     assert json.loads(row.record_ids_json) == ["rec1", "rec2"]
     assert row.process_status == "pending"
-    assert row.event_time == datetime(2026, 5, 28, 1, 17, 25, 198000)
+    assert row.event_time == datetime(2026, 5, 28, 9, 17, 25, 198000)
 
 
 def test_record_event_accepts_legacy_app_token_payload(session):
@@ -161,7 +161,7 @@ def test_handle_record_changed_event_enqueues_incremental_job_without_running_sy
     assert event_log.process_status == "success"
     assert event_log.error_message is None
     assert monitor.last_event_type == "drive.file.bitable_record_changed_v1"
-    assert monitor.last_event_at == datetime(2026, 5, 28, 1, 17, 25, 198000)
+    assert monitor.last_event_at == datetime(2026, 5, 28, 9, 17, 25, 198000)
     assert len(jobs) == 1
     assert jobs[0].job_type == "record_changed_incremental"
     assert json.loads(jobs[0].payload_json) == {

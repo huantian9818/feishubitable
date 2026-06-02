@@ -8,7 +8,7 @@ import time
 
 import httpx
 
-from app.clock import utc_now
+from app.clock import system_now
 
 
 class FeishuApiError(RuntimeError):
@@ -67,7 +67,7 @@ class FeishuBitableClient:
             return None
 
         token, expiry = cached
-        if utc_now() >= expiry:
+        if system_now() >= expiry:
             with self._cache_lock:
                 self._shared_token_cache.pop(self._cache_key(), None)
             return None
@@ -126,7 +126,7 @@ class FeishuBitableClient:
         raise FeishuApiError(str(last_exc) if last_exc else "Feishu request failed")
 
     def get_tenant_access_token(self) -> str:
-        if self._token and self._token_expiry and utc_now() < self._token_expiry:
+        if self._token and self._token_expiry and system_now() < self._token_expiry:
             return self._token
 
         cached_token = self._load_cached_token()
@@ -143,7 +143,7 @@ class FeishuBitableClient:
             raise FeishuApiError(payload.get("msg", "Unable to fetch tenant_access_token"))
 
         token = payload["tenant_access_token"]
-        expiry = utc_now() + timedelta(seconds=payload.get("expire", 7200) - 60)
+        expiry = system_now() + timedelta(seconds=payload.get("expire", 7200) - 60)
         self._store_cached_token(token, expiry)
         return token
 
@@ -192,6 +192,12 @@ class FeishuBitableClient:
         return self._paginate_get(
             f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables",
             error_message="Failed to fetch bitable tables",
+        )
+
+    def list_bitable_fields(self, app_token: str, table_id: str) -> list[dict]:
+        return self._paginate_get(
+            f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/fields",
+            error_message="Failed to fetch bitable fields",
         )
 
     def list_bitable_records(self, app_token: str, table_id: str) -> list[dict]:

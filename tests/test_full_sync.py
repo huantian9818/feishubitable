@@ -47,9 +47,13 @@ def test_run_full_sync_rebuilds_tables_records_and_sync_run(session):
                 {
                     "table_id": "tbl1",
                     "name": "员工表",
-                    "fields": [{"field_id": "f1", "field_name": "姓名"}],
                 }
             ]
+
+        def list_bitable_fields(self, app_token, table_id):
+            assert app_token == "abc"
+            assert table_id == "tbl1"
+            return [{"field_id": "f1", "field_name": "姓名"}]
 
         def list_bitable_records(self, app_token, table_id):
             return [{"record_id": "rec1", "fields": {"姓名": "张三"}}]
@@ -109,9 +113,13 @@ def test_run_full_sync_marks_subscription_failed_without_rolling_back_data(sessi
                 {
                     "table_id": "tbl1",
                     "name": "员工表",
-                    "fields": [{"field_id": "f1", "field_name": "姓名"}],
                 }
             ]
+
+        def list_bitable_fields(self, app_token, table_id):
+            assert app_token == "abc"
+            assert table_id == "tbl1"
+            return [{"field_id": "f1", "field_name": "姓名"}]
 
         def list_bitable_records(self, app_token, table_id):
             return [{"record_id": "rec1", "fields": {"姓名": "张三"}}]
@@ -204,14 +212,20 @@ def test_run_table_resync_refreshes_only_target_table(session):
                 {
                     "table_id": "tbl_accounts",
                     "name": "账号表",
-                    "fields": [{"field_id": "f1", "field_name": "姓名"}],
                 },
                 {
                     "table_id": "tbl_assets",
                     "name": "资产表",
-                    "fields": [{"field_id": "f2", "field_name": "资产编号"}],
                 },
             ]
+
+        def list_bitable_fields(self, app_token, table_id):
+            assert app_token == "abc"
+            if table_id == "tbl_accounts":
+                return [{"field_id": "f1", "field_name": "姓名"}]
+            if table_id == "tbl_assets":
+                return [{"field_id": "f2", "field_name": "资产编号"}]
+            raise AssertionError(f"unexpected table_id: {table_id}")
 
         def list_bitable_records(self, app_token, table_id):
             assert app_token == "abc"

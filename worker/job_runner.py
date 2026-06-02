@@ -4,17 +4,11 @@ import json
 
 from sqlalchemy import select
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.models import WorkerJob
 from app.services.full_sync import run_full_sync, run_table_resync
 from app.services.incremental_sync import run_incremental_sync
 from worker.table_job_leases import release_table_job_lease, try_acquire_table_job_lease
-
-try:
-    from app.services.subscription import resubscribe_monitor
-except ImportError:
-    def resubscribe_monitor(session, monitor_id, client):
-        return None
 
 
 RECORD_CHANGED_INCREMENTAL_JOB = "record_changed_incremental"
@@ -58,8 +52,6 @@ def _job_table_key(job: WorkerJob) -> tuple[int, str] | None:
 def _run_claimed_job(session, job: WorkerJob, client) -> None:
     if job.job_type == "initial_full_sync":
         run_full_sync(session, job.monitor_id, client, trigger_type="initial")
-    elif job.job_type == "manual_full_sync":
-        run_full_sync(session, job.monitor_id, client, trigger_type="manual_full")
     elif job.job_type == "fallback_full_sync":
         run_full_sync(session, job.monitor_id, client, trigger_type="fallback_full")
     elif job.job_type == RECORD_CHANGED_INCREMENTAL_JOB:
@@ -79,8 +71,6 @@ def _run_claimed_job(session, job: WorkerJob, client) -> None:
             client,
             trigger_type="event_field_table_resync",
         )
-    elif job.job_type == "resubscribe":
-        resubscribe_monitor(session, job.monitor_id, client)
 
 
 def run_next_job(session, client, worker_id: str):
@@ -106,7 +96,7 @@ def run_next_job(session, client, worker_id: str):
         return False
 
     selected_job.status = "running"
-    selected_job.started_at = utc_now()
+    selected_job.started_at = system_now()
     session.commit()
 
     try:
@@ -114,7 +104,7 @@ def run_next_job(session, client, worker_id: str):
 
         selected_job.status = "success"
         selected_job.error_message = None
-        selected_job.finished_at = utc_now()
+        selected_job.finished_at = system_now()
         session.commit()
         return True
     except Exception as error:
@@ -125,7 +115,7 @@ def run_next_job(session, client, worker_id: str):
 
         failed_job.status = "failed"
         failed_job.error_message = str(error)
-        failed_job.finished_at = utc_now()
+        failed_job.finished_at = system_now()
         session.commit()
         raise
     finally:

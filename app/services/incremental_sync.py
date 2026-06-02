@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.models import CurrentRecord, Monitor, SyncRun
 
 
@@ -12,7 +12,7 @@ def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
 
 
 def run_incremental_sync(session, monitor_id: int, table_id: str, actions: list[dict], client) -> None:
-    started_at = utc_now()
+    started_at = system_now()
     monitor = session.get(Monitor, monitor_id)
     if monitor is None:
         raise ValueError(f"Monitor {monitor_id} does not exist")
@@ -53,7 +53,7 @@ def run_incremental_sync(session, monitor_id: int, table_id: str, actions: list[
             row.updated_at = started_at
             updated_count += 1
 
-        finished_at = utc_now()
+        finished_at = system_now()
         monitor.current_record_count = session.query(CurrentRecord).filter_by(monitor_id=monitor_id).count()
         monitor.sync_status = "success"
         monitor.last_sync_at = finished_at
@@ -84,7 +84,7 @@ def run_incremental_sync(session, monitor_id: int, table_id: str, actions: list[
         if monitor is None:
             raise ValueError(f"Monitor {monitor_id} does not exist")
 
-        finished_at = utc_now()
+        finished_at = system_now()
         monitor.sync_status = "failed"
         monitor.last_sync_at = finished_at
         monitor.last_sync_error = str(error)

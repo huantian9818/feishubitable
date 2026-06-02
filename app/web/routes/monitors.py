@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 import json
 
 from app.clients.feishu import FeishuApiError, FeishuBitableClient
-from app.clock import utc_now
-from app.models import BitableTable, CurrentRecord, Monitor, SyncRun, WorkerJob
+from app.clock import system_now
+from app.models import BitableTable, CurrentRecord, EventLog, Monitor, SyncRun, WorkerJob
 from app.services.fallback_schedule import PRESET_INTERVALS, compute_next_fallback_at
 from app.services.link_parser import resolve_bitable_app_token
 from app.services.view_models import build_current_record_view
@@ -35,6 +35,53 @@ def _field_names_from_schema(field_schema_json: str | None) -> list[str]:
     return field_names
 
 
+def _job_source_event_id(job: WorkerJob) -> str | None:
+    if not job.payload_json:
+        return None
+
+    try:
+        payload = json.loads(job.payload_json)
+    except json.JSONDecodeError:
+        return None
+
+    source_event_id = payload.get("source_event_id") if isinstance(payload, dict) else None
+    return str(source_event_id) if source_event_id else None
+
+
+def _format_delay_seconds(total_seconds: float | None) -> str:
+    if total_seconds is None:
+        return "-"
+
+    seconds = max(0, int(total_seconds))
+    minutes, remainder = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+
+    if hours:
+        return f"{hours}小时{minutes}分{remainder}秒"
+    if minutes:
+        return f"{minutes}分{remainder}秒"
+    return f"{remainder}秒"
+
+
+def _build_worker_job_rows(worker_jobs: list[WorkerJob], event_logs: list[EventLog]) -> list[dict]:
+    event_logs_by_event_id = {event_log.event_id: event_log for event_log in event_logs}
+    rows = []
+    for job in worker_jobs:
+        event_log = event_logs_by_event_id.get(_job_source_event_id(job) or "")
+        delivery_delay = None
+        if event_log is not None and event_log.event_time and event_log.created_at:
+            delivery_delay = (event_log.created_at - event_log.event_time).total_seconds()
+
+        rows.append(
+            {
+                "job": job,
+                "event_log": event_log,
+                "delivery_delay_text": _format_delay_seconds(delivery_delay),
+            }
+        )
+    return rows
+
+
 def _render_monitor_form(
     request: Request,
     *,
@@ -52,6 +99,18 @@ def _render_monitor_form(
         },
         status_code=status_code,
     )
+
+
+def _delete_monitor_graph(session: Session, monitor_id: int) -> None:
+    from app.models import TableJobLease
+
+    session.query(CurrentRecord).filter(CurrentRecord.monitor_id == monitor_id).delete()
+    session.query(BitableTable).filter(BitableTable.monitor_id == monitor_id).delete()
+    session.query(EventLog).filter(EventLog.monitor_id == monitor_id).delete()
+    session.query(SyncRun).filter(SyncRun.monitor_id == monitor_id).delete()
+    session.query(WorkerJob).filter(WorkerJob.monitor_id == monitor_id).delete()
+    session.query(TableJobLease).filter(TableJobLease.monitor_id == monitor_id).delete()
+    session.query(Monitor).filter(Monitor.id == monitor_id).delete()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -115,7 +174,7 @@ def create_monitor(
         source_url=cleaned_source_url,
         app_token=app_token,
         fallback_interval_minutes=fallback_interval_minutes,
-        next_fallback_sync_at=compute_next_fallback_at(utc_now(), fallback_interval_minutes),
+        next_fallback_sync_at=compute_next_fallback_at(system_now(), fallback_interval_minutes),
     )
 
     try:
@@ -134,6 +193,25 @@ def create_monitor(
         raise
 
     return RedirectResponse(url=f"/monitors/{monitor.id}", status_code=303)
+
+
+@router.post("/monitors/{monitor_id}/delete")
+def delete_monitor(
+    monitor_id: int,
+    session: Session = Depends(get_session),
+):
+    monitor = session.get(Monitor, monitor_id)
+    if monitor is None:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    try:
+        _delete_monitor_graph(session, monitor_id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+    return RedirectResponse(url="/monitors", status_code=303)
 
 
 @router.get("/monitors/{monitor_id}", response_class=HTMLResponse)
@@ -241,13 +319,24 @@ def monitor_runs(
         .limit(RUN_HISTORY_LIMIT)
         .all()
     )
+    source_event_ids = [event_id for event_id in (_job_source_event_id(job) for job in worker_jobs) if event_id]
+    related_event_logs = []
+    if source_event_ids:
+        related_event_logs = (
+            session.query(EventLog)
+            .filter(
+                EventLog.monitor_id == monitor_id,
+                EventLog.event_id.in_(source_event_ids),
+            )
+            .all()
+        )
     return templates.TemplateResponse(
         request,
         "monitor_runs.html",
         {
             "monitor": monitor,
             "sync_runs": sync_runs,
-            "worker_jobs": worker_jobs,
+            "worker_job_rows": _build_worker_job_rows(worker_jobs, related_event_logs),
             "run_history_limit": RUN_HISTORY_LIMIT,
         },
     )

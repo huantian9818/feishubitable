@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.models import TableJobLease
 
 
@@ -10,7 +10,7 @@ DEFAULT_TABLE_JOB_LEASE_SECONDS = 30
 
 
 def try_acquire_table_job_lease(session, monitor_id: int, table_id: str, worker_id: str) -> bool:
-    now = utc_now()
+    now = system_now()
     lease = session.query(TableJobLease).filter_by(monitor_id=monitor_id, table_id=table_id).one_or_none()
     if lease is None:
         session.add(

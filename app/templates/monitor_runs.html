@@ -13,10 +13,11 @@
 
     <div class="two-column">
       <section class="subpanel monitor-run-panel">
-        <h2>异步任务</h2>
+        <h2>待处理/已处理任务</h2>
         <p class="muted">仅显示最近 {{ run_history_limit }} 条任务记录。</p>
         <ul class="record-list monitor-run-list">
-          {% for job in worker_jobs %}
+          {% for row in worker_job_rows %}
+          {% set job = row.job %}
           <li class="run-card">
             <div class="run-card-head">
               <div>
@@ -24,21 +25,38 @@
                 <div class="run-card-status">状态：{{ job.status }}</div>
               </div>
               <div class="run-card-meta">
-                <div>创建：{{ job.created_at or "-" }}</div>
-                <div>计划执行：{{ job.run_after or "-" }}</div>
+                <div>创建：{{ job.created_at|local_datetime }}</div>
+                <div>计划执行：{{ job.run_after|local_datetime }}</div>
               </div>
             </div>
 
             <dl class="run-card-grid">
               <div>
                 <dt class="run-card-label">开始时间</dt>
-                <dd class="run-card-value">{{ job.started_at or "-" }}</dd>
+                <dd class="run-card-value">{{ job.started_at|local_datetime }}</dd>
               </div>
               <div>
                 <dt class="run-card-label">结束时间</dt>
-                <dd class="run-card-value">{{ job.finished_at or "-" }}</dd>
+                <dd class="run-card-value">{{ job.finished_at|local_datetime }}</dd>
               </div>
             </dl>
+
+            {% if row.event_log %}
+            <dl class="run-card-grid">
+              <div>
+                <dt class="run-card-label">事件发生</dt>
+                <dd class="run-card-value">{{ row.event_log.event_time|local_datetime }}</dd>
+              </div>
+              <div>
+                <dt class="run-card-label">本地接收</dt>
+                <dd class="run-card-value">{{ row.event_log.created_at|local_datetime }}</dd>
+              </div>
+              <div>
+                <dt class="run-card-label">推送延迟</dt>
+                <dd class="run-card-value">{{ row.delivery_delay_text }}</dd>
+              </div>
+            </dl>
+            {% endif %}
 
             {% if job.error_message %}
             <div class="run-card-error">
@@ -55,13 +73,13 @@
             {% endif %}
           </li>
           {% else %}
-          <li>暂无异步任务</li>
+          <li>暂无任务记录</li>
           {% endfor %}
         </ul>
       </section>
 
       <section class="subpanel monitor-run-panel">
-        <h2>同步运行</h2>
+        <h2>实际同步结果</h2>
         <p class="muted">仅显示最近 {{ run_history_limit }} 条同步记录。</p>
         <ul class="record-list monitor-run-list">
           {% for run in sync_runs %}
@@ -72,8 +90,8 @@
                 <div class="run-card-status">状态：{{ run.status }}</div>
               </div>
               <div class="run-card-meta">
-                <div>开始：{{ run.started_at or "-" }}</div>
-                <div>结束：{{ run.finished_at or "-" }}</div>
+                <div>开始：{{ run.started_at|local_datetime }}</div>
+                <div>结束：{{ run.finished_at|local_datetime }}</div>
               </div>
             </div>
 
@@ -103,7 +121,7 @@
             {% endif %}
           </li>
           {% else %}
-          <li>暂无同步记录</li>
+          <li>暂无同步结果</li>
           {% endfor %}
         </ul>
       </section>

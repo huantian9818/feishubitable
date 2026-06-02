@@ -13,9 +13,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.clock import utc_now
+from app.clock import system_now
 from app.schemas import (
-    DEFAULT_TIMEZONE,
     PRESET_FALLBACK_INTERVALS,
     SUBSCRIPTION_STATUS_PENDING,
     SYNC_STATUS_NEVER,
@@ -34,9 +33,8 @@ class AppSetting(Base):
     app_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     app_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
     tenant_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    timezone: Mapped[str] = mapped_column(Text, default=DEFAULT_TIMEZONE)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=system_now, onupdate=system_now)
 
 
 class Monitor(Base):
@@ -60,8 +58,8 @@ class Monitor(Base):
     watch_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     subscription_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_record_count: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=system_now, onupdate=system_now)
 
     tables: Mapped[list[BitableTable]] = relationship(back_populates="monitor")
     current_records: Mapped[list[CurrentRecord]] = relationship(back_populates="monitor")
@@ -80,7 +78,7 @@ class BitableTable(Base):
     table_name: Mapped[str] = mapped_column(Text)
     field_schema_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_seen_revision: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=system_now, onupdate=system_now)
 
     monitor: Mapped[Monitor] = relationship(back_populates="tables")
 
@@ -103,7 +101,7 @@ class CurrentRecord(Base):
     fields_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     display_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_revision: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=system_now, onupdate=system_now)
 
     monitor: Mapped[Monitor] = relationship(back_populates="current_records")
 
@@ -122,7 +120,7 @@ class EventLog(Base):
     process_status: Mapped[str] = mapped_column(Text, default="pending")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
 
     monitor: Mapped[Monitor | None] = relationship(back_populates="event_logs")
 
@@ -134,7 +132,7 @@ class SyncRun(Base):
     monitor_id: Mapped[int] = mapped_column(ForeignKey("monitors.id"))
     trigger_type: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, default="pending")
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     stats_json: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -155,7 +153,7 @@ class WorkerJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
 
     monitor: Mapped[Monitor | None] = relationship(back_populates="worker_jobs")
 
@@ -169,5 +167,5 @@ class TableJobLease(Base):
     table_id: Mapped[str] = mapped_column(Text)
     worker_id: Mapped[str] = mapped_column(Text)
     lease_expires_at: Mapped[datetime] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=system_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=system_now, onupdate=system_now)

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="page-shell">
+<main class="page-shell monitors-page">
   <section class="panel">
     <div class="panel-header">
       <div>
@@ -28,6 +28,12 @@
             <dd>{{ monitor.fallback_interval_minutes }} 分钟</dd>
           </div>
         </dl>
+        <div class="card-actions">
+          <a class="button-link secondary" href="/monitors/{{ monitor.id }}">查看详情</a>
+          <form action="/monitors/{{ monitor.id }}/delete" method="post" class="inline-action">
+            <button type="submit" class="button-link danger">删除监控源</button>
+          </form>
+        </div>
       </article>
       {% else %}
       <article class="empty-state">
