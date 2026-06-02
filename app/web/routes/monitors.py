@@ -65,6 +65,7 @@ def _format_delay_seconds(total_seconds: float | None) -> str:
 
 def _build_worker_job_rows(worker_jobs: list[WorkerJob], event_logs: list[EventLog]) -> list[dict]:
     event_logs_by_event_id = {event_log.event_id: event_log for event_log in event_logs}
+    job_index_by_id = {job.id: index for index, job in enumerate(reversed(worker_jobs), start=1)}
     rows = []
     for job in worker_jobs:
         event_log = event_logs_by_event_id.get(_job_source_event_id(job) or "")
@@ -77,9 +78,21 @@ def _build_worker_job_rows(worker_jobs: list[WorkerJob], event_logs: list[EventL
                 "job": job,
                 "event_log": event_log,
                 "delivery_delay_text": _format_delay_seconds(delivery_delay),
+                "monitor_job_index": job_index_by_id[job.id],
             }
         )
     return rows
+
+
+def _build_sync_run_rows(sync_runs: list[SyncRun]) -> list[dict]:
+    run_index_by_id = {run.id: index for index, run in enumerate(reversed(sync_runs), start=1)}
+    return [
+        {
+            "run": run,
+            "monitor_run_index": run_index_by_id[run.id],
+        }
+        for run in sync_runs
+    ]
 
 
 def _render_monitor_form(
@@ -335,7 +348,7 @@ def monitor_runs(
         "monitor_runs.html",
         {
             "monitor": monitor,
-            "sync_runs": sync_runs,
+            "sync_run_rows": _build_sync_run_rows(sync_runs),
             "worker_job_rows": _build_worker_job_rows(worker_jobs, related_event_logs),
             "run_history_limit": RUN_HISTORY_LIMIT,
         },

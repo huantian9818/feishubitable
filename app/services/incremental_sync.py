@@ -5,6 +5,7 @@ import json
 
 from app.clock import system_now
 from app.models import CurrentRecord, Monitor, SyncRun
+from app.services.field_text import fields_to_display_text
 
 
 def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
@@ -49,7 +50,7 @@ def run_incremental_sync(session, monitor_id: int, table_id: str, actions: list[
                 session.add(row)
 
             row.fields_json = json.dumps(record["fields"], ensure_ascii=False)
-            row.display_text = " | ".join(str(value) for value in record["fields"].values())
+            row.display_text = fields_to_display_text(record["fields"])
             row.updated_at = started_at
             updated_count += 1
 

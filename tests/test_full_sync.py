@@ -145,6 +145,52 @@ def test_run_full_sync_marks_subscription_failed_without_rolling_back_data(sessi
     assert sync_runs[0].status == "success"
 
 
+def test_run_full_sync_flattens_structured_values_into_plain_text(session):
+    from app.models import CurrentRecord, Monitor
+    from app.services.full_sync import run_full_sync
+
+    monitor = Monitor(
+        name="公众号小程序",
+        source_url="https://example.feishu.cn/base/xyz",
+        app_token="xyz",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+
+    class FakeClient:
+        def get_bitable_meta(self, app_token):
+            return {"app_token": app_token}
+
+        def get_bitable_tables(self, app_token):
+            return [{"table_id": "tbl1", "name": "账号表"}]
+
+        def list_bitable_fields(self, app_token, table_id):
+            return [{"field_id": "f1", "field_name": "管理员"}]
+
+        def list_bitable_records(self, app_token, table_id):
+            return [
+                {
+                    "record_id": "rec1",
+                    "fields": {
+                        "管理员": [
+                            {"id": "ou_1", "name": "仇东波"},
+                            {"id": "ou_2", "name": "夏健"},
+                        ],
+                        "备注": {"text": "已交接"},
+                    },
+                }
+            ]
+
+        def refresh_bitable_subscription(self, app_token):
+            return {"ok": True}
+
+    run_full_sync(session, monitor.id, FakeClient(), trigger_type="initial")
+
+    row = session.query(CurrentRecord).filter_by(monitor_id=monitor.id, record_id="rec1").one()
+    assert row.display_text == "仇东波、夏健 | 已交接"
+
+
 def test_run_table_resync_refreshes_only_target_table(session):
     from app.models import BitableTable, CurrentRecord, Monitor, SyncRun
     from app.services.full_sync import run_table_resync

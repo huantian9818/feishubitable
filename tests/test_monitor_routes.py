@@ -233,6 +233,52 @@ def test_monitor_runs_page_formats_times_in_beijing_time(client, session, seeded
     assert "2026-05-28 02:04:05" in response.text
 
 
+def test_monitor_runs_page_shows_monitor_local_and_global_ids(client, session, seeded_monitor):
+    from app.models import Monitor, SyncRun, WorkerJob
+
+    other_monitor = Monitor(
+        name="其他监控源",
+        source_url="https://example.feishu.cn/base/app_other",
+        app_token="app_other",
+        fallback_interval_minutes=360,
+    )
+    session.add(other_monitor)
+    session.commit()
+
+    session.add(
+        WorkerJob(
+            job_type="initial_full_sync",
+            monitor_id=other_monitor.id,
+            status="success",
+        )
+    )
+    session.commit()
+
+    session.add(
+        WorkerJob(
+            job_type="initial_full_sync",
+            monitor_id=seeded_monitor.id,
+            status="success",
+        )
+    )
+    session.add(
+        SyncRun(
+            monitor_id=seeded_monitor.id,
+            trigger_type="initial",
+            status="success",
+        )
+    )
+    session.commit()
+
+    response = client.get(f"/monitors/{seeded_monitor.id}/runs")
+
+    assert response.status_code == 200
+    assert "第 1 次任务 / 全局 #" in response.text
+    assert "initial_full_sync" in response.text
+    assert "第 1 次同步 / 全局 #" in response.text
+    assert "initial" in response.text
+
+
 def test_monitor_runs_page_shows_event_delivery_delay(client, session, seeded_monitor):
     from datetime import datetime
     import json

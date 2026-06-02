@@ -21,7 +21,7 @@
           <li class="run-card">
             <div class="run-card-head">
               <div>
-                <strong>#{{ job.id }} {{ job.job_type }}</strong>
+                <strong>第 {{ row.monitor_job_index }} 次任务 / 全局 #{{ job.id }} {{ job.job_type }}</strong>
                 <div class="run-card-status">状态：{{ job.status }}</div>
               </div>
               <div class="run-card-meta">
@@ -82,11 +82,12 @@
         <h2>实际同步结果</h2>
         <p class="muted">仅显示最近 {{ run_history_limit }} 条同步记录。</p>
         <ul class="record-list monitor-run-list">
-          {% for run in sync_runs %}
+          {% for row in sync_run_rows %}
+          {% set run = row.run %}
           <li class="run-card">
             <div class="run-card-head">
               <div>
-                <strong>#{{ run.id }} {{ run.trigger_type }}</strong>
+                <strong>第 {{ row.monitor_run_index }} 次同步 / 全局 #{{ run.id }} {{ run.trigger_type }}</strong>
                 <div class="run-card-status">状态：{{ run.status }}</div>
               </div>
               <div class="run-card-meta">

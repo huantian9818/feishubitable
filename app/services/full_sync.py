@@ -8,6 +8,7 @@ import logging
 from app.clock import system_now
 from app.models import BitableTable, CurrentRecord, Monitor, SyncRun
 from app.services.fallback_schedule import compute_next_fallback_at
+from app.services.field_text import fields_to_display_text
 from app.services.subscription import resubscribe_monitor
 
 LOGGER = logging.getLogger(__name__)
@@ -21,10 +22,6 @@ class FullSyncResult:
 
 def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
     return int((finished_at - started_at).total_seconds() * 1000)
-
-
-def _display_text(fields: dict) -> str:
-    return " | ".join(str(value) for value in fields.values())
 
 
 def _table_fields_snapshot(client, app_token: str, table: dict) -> list[dict]:
@@ -128,7 +125,7 @@ def _replace_table_snapshot(session, monitor_id: int, table: dict, records: list
                 record_id=record["record_id"],
                 sort_order=row_index,
                 fields_json=json.dumps(record["fields"], ensure_ascii=False),
-                display_text=_display_text(record["fields"]),
+                display_text=fields_to_display_text(record["fields"]),
             )
         )
 
@@ -166,7 +163,7 @@ def run_full_sync(session, monitor_id: int, client, trigger_type: str) -> FullSy
                         record_id=record["record_id"],
                         sort_order=row_index,
                         fields_json=json.dumps(record["fields"], ensure_ascii=False),
-                        display_text=_display_text(record["fields"]),
+                        display_text=fields_to_display_text(record["fields"]),
                     )
                 )
 

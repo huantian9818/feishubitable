@@ -312,6 +312,18 @@ dd {
   font-size: 1.02rem;
 }
 
+.monitors-page .monitor-source-url {
+  display: -webkit-box;
+  line-height: 1.45;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .monitor-detail-page dd,
 .monitors-page dd,
 .monitor-detail-page .data-table,

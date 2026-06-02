@@ -55,6 +55,67 @@ def test_incremental_sync_updates_only_one_record(session):
     assert row.display_text == "新值"
 
 
+def test_incremental_sync_flattens_structured_values_into_plain_text(session):
+    from app.models import BitableTable, CurrentRecord, Monitor
+    from app.services.incremental_sync import run_incremental_sync
+
+    monitor = Monitor(
+        name="公众号小程序",
+        source_url="https://example.feishu.cn/base/app456",
+        app_token="app456",
+        fallback_interval_minutes=360,
+    )
+    session.add(monitor)
+    session.commit()
+    session.add(
+        BitableTable(
+            monitor_id=monitor.id,
+            table_id="tbl1",
+            table_name="账号表",
+            field_schema_json=json.dumps([{"field_name": "管理员"}], ensure_ascii=False),
+        )
+    )
+    session.commit()
+    session.add(
+        CurrentRecord(
+            monitor_id=monitor.id,
+            table_id="tbl1",
+            record_id="rec1",
+            sort_order=1,
+            fields_json='{"管理员":"旧值"}',
+            display_text="旧值",
+        )
+    )
+    session.commit()
+
+    class FakeClient:
+        def get_bitable_record(self, app_token, table_id, record_id):
+            assert app_token == "app456"
+            assert table_id == "tbl1"
+            assert record_id == "rec1"
+            return {
+                "record_id": record_id,
+                "fields": {
+                    "管理员": [
+                        {"id": "ou_1", "name": "仇东波", "email": "qiudongbo@boohee.com"},
+                        {"id": "ou_2", "name": "夏健", "email": "xiajian@boohee.com"},
+                    ],
+                    "备注": {"text": "已交接"},
+                },
+            }
+
+    run_incremental_sync(
+        session=session,
+        monitor_id=monitor.id,
+        table_id="tbl1",
+        actions=[{"record_id": "rec1", "action": "record_edited"}],
+        client=FakeClient(),
+    )
+
+    row = session.query(CurrentRecord).filter_by(record_id="rec1").one()
+    assert row.display_text == "仇东波、夏健 | 已交接"
+
+
 def test_incremental_sync_deletes_only_one_record(session):
     from app.models import BitableTable, CurrentRecord, Monitor
     from app.services.incremental_sync import run_incremental_sync

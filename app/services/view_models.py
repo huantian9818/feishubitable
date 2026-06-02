@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from math import ceil
 
+from app.services.field_text import value_to_plain_text
+
 
 def _safe_load_fields(fields_json: str | None) -> dict:
     if not fields_json:
@@ -68,7 +70,7 @@ def build_current_record_view(
     body_rows: list[list[str]] = []
     for row in records:
         fields = _safe_load_fields(row.fields_json)
-        body_rows.append([row.record_id, *[str(fields.get(name, "")) for name in field_names]])
+        body_rows.append([row.record_id, *[value_to_plain_text(fields.get(name)) for name in field_names]])
 
     total_count = selected_table.get("count", 0) if selected_table else 0
     total_pages = max(1, ceil(total_count / page_size)) if total_count else 1
